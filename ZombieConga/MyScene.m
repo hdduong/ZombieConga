@@ -48,6 +48,8 @@ static const float ZOMBIE_MOVE_POINTS_PER_SEC = 120.0;
     
     //_zombie.position = CGPointMake(_zombie.position.x + 2, _zombie.position.y);
     [self moveSprite:_zombie velocity:_velocity];
+    [self rotateSprite:_zombie toFace:_velocity];
+    [self boundsCheckPlayer];
 }
 
 -(void) moveSprite:(SKSpriteNode*) sprite velocity:(CGPoint)velocity {
@@ -88,5 +90,47 @@ static const float ZOMBIE_MOVE_POINTS_PER_SEC = 120.0;
     CGPoint touchLocation = [touch locationInNode:self];
     [self moveZombieToward:touchLocation];
 }
+
+
+- (void)boundsCheckPlayer {
+    // 1
+    CGPoint newPosition = _zombie.position;
+    CGPoint newVelocity = _velocity;
+    
+    // 2
+    CGPoint bottomLeft = CGPointZero;
+    
+    CGPoint topRight = CGPointMake(self.size.width,
+                                   self.size.height);
+    // 3
+    if (newPosition.x <= bottomLeft.x) {
+        newPosition.x = bottomLeft.x;
+        newVelocity.x = -newVelocity.x;
+    }
+    if (newPosition.x >= topRight.x) {
+        newPosition.x = topRight.x;
+        newVelocity.x = -newVelocity.x;
+    }
+    
+    if (newPosition.y <= bottomLeft.y) {
+        newPosition.y = bottomLeft.y;
+        newVelocity.y = -newVelocity.y;
+    }
+    
+    if (newPosition.y >= topRight.y) {
+        newPosition.y = topRight.y;
+        newVelocity.y = -newVelocity.y;
+    }
+    
+    // 4
+    _zombie.position = newPosition;
+    _velocity = newVelocity;
+}
+
+- (void)rotateSprite:(SKSpriteNode *)sprite toFace:(CGPoint)direction
+{
+    sprite.zRotation = atan2f(direction.y, direction.x);
+}
+
 
 @end
