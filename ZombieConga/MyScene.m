@@ -10,9 +10,66 @@
 
 static const float ZOMBIE_MOVE_POINTS_PER_SEC = 120.0;
 
+static const float ZOMBIE_ROTATE_RADIANS_PER_SEC = 4 * M_PI;
+
+static inline CGPoint CGPointAdd(const CGPoint a, const CGPoint b)
+{
+    return CGPointMake(a.x + b.x, a.y + b.y);
+}
+
+static inline CGPoint CGPointSubtract(const CGPoint a, const CGPoint b)
+{
+    return CGPointMake(a.x - b.x, a.y - b.y);
+}
+
+static inline CGPoint CGPointMultiplyScalar(const CGPoint a, const CGFloat b)
+{
+    return CGPointMake(a.x * b, a.y * b);
+}
+
+static inline CGFloat CGPointLength(const CGPoint a) {
+    return sqrtf(a.x * a.x + a.y * a.y);
+}
+
+static inline CGPoint CGPointNormalize(const CGPoint a) {
+    CGFloat length = CGPointLength(a);
+    return CGPointMake(a.x / length, a.y / length);
+}
+
+static inline CGFloat CGPointToAngle(const CGPoint a) {
+    return atan2f(a.y, a.x);
+}
+
+static inline CGFloat CGPointDistance(const CGPoint a, const CGPoint b) {
+    return (sqrt( (a.x - b.x)*(a.x - b.x) + (a.y - b.y)*(a.y - b.y) ));
+}
+
+static inline CGFloat ScalarSign(CGFloat a) {
+    return a >= 0 ? 1 : -1;
+}
+
+
+// Returns shortest angle between two angles,
+// between -M_PI and M_PI
+static inline CGFloat ScalarShortestAngleBetween(const CGFloat a, const CGFloat b) {
+    CGFloat difference = b - a;
+    CGFloat angle = fmodf(difference, M_PI * 2);
+    
+    if (angle >= M_PI) {
+        angle -= M_PI * 2;
+    }
+    else if (angle <= -M_PI) {
+        angle += M_PI * 2;
+    }
+    return angle;
+}
+
+
+
 @implementation MyScene {
     SKSpriteNode *_zombie;
     CGPoint _velocity;
+    CGPoint _lastTouchLocation;
     
     NSTimeInterval _lastUpdateTime;
     NSTimeInterval _dt;
@@ -46,49 +103,62 @@ static const float ZOMBIE_MOVE_POINTS_PER_SEC = 120.0;
     _lastUpdateTime = currentTime;
     NSLog(@"%0.2f miliseconds from last update",_dt*1000);
     
-    //_zombie.position = CGPointMake(_zombie.position.x + 2, _zombie.position.y);
+    if (CGPointDistance(_zombie.position, _lastTouchLocation) <= ZOMBIE_MOVE_POINTS_PER_SEC * _dt) {
+        _zombie.position = CGPointMake(_lastTouchLocation.x, _lastTouchLocation.y);
+        _velocity = CGPointZero;
+    }
     [self moveSprite:_zombie velocity:_velocity];
-    [self rotateSprite:_zombie toFace:_velocity];
+    [self rotateSprite:_zombie toFace:_velocity rotateRadiansPerSec:ZOMBIE_ROTATE_RADIANS_PER_SEC ];
     [self boundsCheckPlayer];
 }
 
 -(void) moveSprite:(SKSpriteNode*) sprite velocity:(CGPoint)velocity {
     
-    CGPoint ammountToMove = CGPointMake(velocity.x * _dt, velocity.y * _dt);
+    CGPoint ammountToMove = CGPointMultiplyScalar(velocity, _dt);
     
     NSLog(@"Amount to move %@", NSStringFromCGPoint(ammountToMove));
     
-    sprite.position = CGPointMake(sprite.position.x + ammountToMove.x, sprite.position.y + ammountToMove.y);
+    sprite.position = CGPointAdd(sprite.position, ammountToMove);
+
 }
 
 - (void)moveZombieToward:(CGPoint)location {
-    CGPoint offset = CGPointMake(location.x - _zombie.position.x, location.y - _zombie.position.y);
+    CGPoint offset = CGPointSubtract(location, _zombie.position);
+
+    CGFloat length = CGPointLength(offset);
+
+    CGPoint direction = CGPointMultiplyScalar(offset, 1.0/length);
     
-    CGFloat length = sqrtf(offset.x * offset.x + offset.y * offset.y);
+
+    _velocity = CGPointMultiplyScalar(direction, ZOMBIE_MOVE_POINTS_PER_SEC);
     
-    CGPoint direction = CGPointMake(offset.x / length, offset.y / length);
     
-    _velocity = CGPointMake(direction.x * ZOMBIE_MOVE_POINTS_PER_SEC,
-                direction.y * ZOMBIE_MOVE_POINTS_PER_SEC);
-    // lenght of _velocity = ZOMBIE_MOVE_POINTS_PER_SEC but we have direction there
 }
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
     UITouch *touch = [touches anyObject];
     CGPoint touchLocation = [touch locationInNode:self];
     [self moveZombieToward:touchLocation];
+    
+    _lastTouchLocation = touchLocation;
 }
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
     UITouch *touch = [touches anyObject];
     CGPoint touchLocation = [touch locationInNode:self];
     [self moveZombieToward:touchLocation];
+    
+    _lastTouchLocation = touchLocation;
+    
 }
 
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
     UITouch *touch = [touches anyObject];
     CGPoint touchLocation = [touch locationInNode:self];
     [self moveZombieToward:touchLocation];
+    
+    _lastTouchLocation = touchLocation;
+
 }
 
 
@@ -127,10 +197,22 @@ static const float ZOMBIE_MOVE_POINTS_PER_SEC = 120.0;
     _velocity = newVelocity;
 }
 
-- (void)rotateSprite:(SKSpriteNode *)sprite toFace:(CGPoint)direction
-{
-    sprite.zRotation = atan2f(direction.y, direction.x);
+
+- (void)rotateSprite:(SKSpriteNode *)sprite toFace:(CGPoint)velocity rotateRadiansPerSec:(CGFloat)rotateRadiansPerSec {
+    //REMEMBER to compare zRotation (current) with velocity (already contains direction)
+    
+    float targetAngle = CGPointToAngle(velocity);
+    
+    float shortest = ScalarShortestAngleBetween(sprite.zRotation, targetAngle);
+    
+    float  amtToRotate = ZOMBIE_ROTATE_RADIANS_PER_SEC * _dt;
+    
+    if (ABS(shortest) < amtToRotate) {
+        amtToRotate = ABS(shortest);
+    }
+    sprite.zRotation += ScalarSign(shortest) * amtToRotate;
 }
+
 
 
 @end
