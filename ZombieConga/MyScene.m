@@ -9,6 +9,7 @@
 #import "MyScene.h"
 
 static const float ZOMBIE_MOVE_POINTS_PER_SEC = 120.0;
+static const float TRAIN_MOVE_POINTS_PER_SEC = 120.0;
 
 static const float ZOMBIE_ROTATE_RADIANS_PER_SEC = 4 * M_PI;
 
@@ -82,6 +83,8 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
     SKAction *_catCollisionSound;
     SKAction *_enemyCollisionSound;
     
+    BOOL _zombieBlinking;
+    
 }
 
 -(id)initWithSize:(CGSize)size {
@@ -121,6 +124,10 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
         
         _catCollisionSound = [SKAction playSoundFileNamed:@"hitCat.wav" waitForCompletion:NO];
         _enemyCollisionSound = [SKAction playSoundFileNamed:@"hitCatLady.wav" waitForCompletion:NO];
+        
+        _zombieBlinking = FALSE;
+        _zombie.zPosition = 100;
+        
 
     }
     return self;
@@ -145,7 +152,7 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
     [self moveSprite:_zombie velocity:_velocity];
     [self rotateSprite:_zombie toFace:_velocity rotateRadiansPerSec:ZOMBIE_ROTATE_RADIANS_PER_SEC ];
     [self boundsCheckPlayer];
-    //[self checkCollisions];
+    [self moveTrain];
 }
 
 -(void) didEvaluateActions {
@@ -352,21 +359,83 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
 }
 
 -(void) checkCollisions {
+   
+
     [self enumerateChildNodesWithName:@"cat" usingBlock:^(SKNode *node, BOOL *stop) {
         SKSpriteNode *cat = (SKSpriteNode *) node;
         if (CGRectIntersectsRect(cat.frame, _zombie.frame)) {
-            [cat removeFromParent];
+            //[cat removeFromParent];
             [self runAction:_catCollisionSound];
+            cat.name = @"train";
+            [cat removeAllActions];
+            
+            [cat setScale:1.0];
+            cat.zRotation = 0.0;
+            /*
+            [cat runAction:[SKAction repeatActionForever:
+                            [SKAction sequence:@[
+                                                 [SKAction colorizeWithColor:[SKColor greenColor] colorBlendFactor:1.0 duration:0.2],
+                                                 [SKAction colorizeWithColorBlendFactor: 0.0 duration:0.2],
+                                                 ]]
+            ]];
+            */
+            cat.color = [SKColor greenColor];
+            cat.colorBlendFactor = 1.0;
         }
     }];
     
+   
     [self enumerateChildNodesWithName:@"enemy" usingBlock:^(SKNode *node, BOOL *stop) {
         SKSpriteNode *enemy = (SKSpriteNode *) node;
         CGRect smallerFrame = CGRectInset(enemy.frame, 20, 20);
+        
         if (CGRectIntersectsRect(smallerFrame, _zombie.frame)) {
-            [enemy removeFromParent];
-            [self runAction:_enemyCollisionSound];
+            if (!_zombieBlinking) {
+            //[enemy removeFromParent];
+                _zombieBlinking = TRUE;
+                [self runAction:_enemyCollisionSound];
+                [self zombieBlink];
+            }
         }
-    }];}
+    }];
+   
+}
+
+-(void) zombieBlink {
     
+    float blinkTimes = 10;
+    float blinkDuration = 5.0;
+    
+    SKAction *blinkAction = [SKAction customActionWithDuration:blinkDuration actionBlock:^(SKNode *node, CGFloat elapsedTime) {
+        float slice = blinkDuration/ blinkTimes;
+        float remainder = fmodf(elapsedTime,slice);
+        node.hidden = remainder > (slice/2);
+    }];
+    
+    [_zombie runAction:blinkAction completion:^{
+        _zombie.hidden = FALSE;
+        _zombieBlinking = FALSE;
+    }];
+}
+
+-(void) moveTrain {
+    __block CGPoint targetPosition = _zombie.position;
+    
+    [self enumerateChildNodesWithName:@"train" usingBlock:^(SKNode *node, BOOL *stop) {
+        if (!node.hasActions) {
+            float actionDuration = 0.3;
+            CGPoint offset = CGPointSubtract(targetPosition, node.position);
+            
+            float offsetLength = CGPointLength(offset);
+            CGPoint direction = CGPointMultiplyScalar(offset, 1.0/offsetLength);
+            
+            CGPoint ammountToMovePerSec = CGPointMultiplyScalar(direction, TRAIN_MOVE_POINTS_PER_SEC);
+            CGPoint amountToMove = CGPointMultiplyScalar(ammountToMovePerSec, actionDuration);
+            
+            [node runAction:[SKAction moveBy:CGVectorMake(amountToMove.x, amountToMove.y) duration:actionDuration]];
+            
+        }
+        targetPosition = node.position;
+    }];
+}
 @end
