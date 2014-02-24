@@ -140,6 +140,7 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
     [self moveSprite:_zombie velocity:_velocity];
     [self rotateSprite:_zombie toFace:_velocity rotateRadiansPerSec:ZOMBIE_ROTATE_RADIANS_PER_SEC ];
     [self boundsCheckPlayer];
+    [self checkCollisions];
 }
 
 -(void) moveSprite:(SKSpriteNode*) sprite velocity:(CGPoint)velocity {
@@ -245,6 +246,8 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
 }
 
 -(void)spawnEnemy {
+   
+    
     /*
     SKSpriteNode *enemy = [SKSpriteNode spriteNodeWithImageNamed:@"enemy"];
     enemy.position = CGPointMake(self.size.width + enemy.size.width/2, self.size.height);
@@ -274,6 +277,8 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
     */
     
     SKSpriteNode *enemy = [SKSpriteNode spriteNodeWithImageNamed:@"enemy"];
+    enemy.name = @"enemy";
+    
     enemy.position = CGPointMake( self.size.width + enemy.size.width/2,
     ScalarRandomRange(enemy.size.height/2, self.size.height - enemy.size.height/2));
     
@@ -298,8 +303,9 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
 
 - (void)spawnCat {
     // 1
-    SKSpriteNode *cat =
-    [SKSpriteNode spriteNodeWithImageNamed:@"cat"];
+    SKSpriteNode *cat = [SKSpriteNode spriteNodeWithImageNamed:@"cat"];
+    cat.name = @"cat";
+    
     cat.position = CGPointMake( ScalarRandomRange(0, self.size.width), ScalarRandomRange(0, self.size.height));
     
     cat.xScale = 0;
@@ -336,5 +342,20 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
     [cat runAction: [SKAction sequence: @[appear,groupWait , disappear, removeFromParent]]];
 }
 
+-(void) checkCollisions {
+    [self enumerateChildNodesWithName:@"cat" usingBlock:^(SKNode *node, BOOL *stop) {
+        SKSpriteNode *cat = (SKSpriteNode *) node;
+        if (CGRectIntersectsRect(cat.frame, _zombie.frame)) {
+            [cat removeFromParent];
+        }
+    }];
+    
+    [self enumerateChildNodesWithName:@"enemy" usingBlock:^(SKNode *node, BOOL *stop) {
+        SKSpriteNode *enemy = (SKSpriteNode *) node;
+        CGRect smallerFrame = CGRectInset(enemy.frame, 20, 20);
+        if (CGRectIntersectsRect(smallerFrame, _zombie.frame)) {
+            [enemy removeFromParent];
+        }
+    }];}
     
 @end
