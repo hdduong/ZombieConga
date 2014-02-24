@@ -79,6 +79,8 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
     NSTimeInterval _dt;
     
     SKAction *_zombieAnaimation;
+    SKAction *_catCollisionSound;
+    SKAction *_enemyCollisionSound;
     
 }
 
@@ -115,8 +117,11 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
         //[_zombie runAction:[SKAction repeatActionForever:_zombieAnaimation]];
         
         
-        [self runAction:[SKAction repeatActionForever: [SKAction sequence:@[ [SKAction performSelector:@selector(spawnCat) onTarget:self],
-        [SKAction waitForDuration:1.0]]]]];
+        [self runAction:[SKAction repeatActionForever: [SKAction sequence:@[ [SKAction performSelector:@selector(spawnCat) onTarget:self], [SKAction waitForDuration:1.0]]]]];
+        
+        _catCollisionSound = [SKAction playSoundFileNamed:@"hitCat.wav" waitForCompletion:NO];
+        _enemyCollisionSound = [SKAction playSoundFileNamed:@"hitCatLady.wav" waitForCompletion:NO];
+
     }
     return self;
 }
@@ -140,6 +145,10 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
     [self moveSprite:_zombie velocity:_velocity];
     [self rotateSprite:_zombie toFace:_velocity rotateRadiansPerSec:ZOMBIE_ROTATE_RADIANS_PER_SEC ];
     [self boundsCheckPlayer];
+    //[self checkCollisions];
+}
+
+-(void) didEvaluateActions {
     [self checkCollisions];
 }
 
@@ -347,6 +356,7 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
         SKSpriteNode *cat = (SKSpriteNode *) node;
         if (CGRectIntersectsRect(cat.frame, _zombie.frame)) {
             [cat removeFromParent];
+            [self runAction:_catCollisionSound];
         }
     }];
     
@@ -355,6 +365,7 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
         CGRect smallerFrame = CGRectInset(enemy.frame, 20, 20);
         if (CGRectIntersectsRect(smallerFrame, _zombie.frame)) {
             [enemy removeFromParent];
+            [self runAction:_enemyCollisionSound];
         }
     }];}
     
