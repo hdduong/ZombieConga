@@ -64,8 +64,12 @@ static inline CGFloat ScalarShortestAngleBetween(const CGFloat a, const CGFloat 
     return angle;
 }
 
-
-
+#define ARC4RANDOM_MAX 0x100000000
+static inline CGFloat ScalarRandomRange(CGFloat min,
+                                        CGFloat max) {
+    return floorf(((double)arc4random() / ARC4RANDOM_MAX) * (max - min) + min);
+}
+                  
 @implementation MyScene {
     SKSpriteNode *_zombie;
     CGPoint _velocity;
@@ -89,6 +93,12 @@ static inline CGFloat ScalarShortestAngleBetween(const CGFloat a, const CGFloat 
         
         [self addChild:bg];
         [self addChild:_zombie];
+        
+        //[self spawnEnemy];
+        [self runAction:[SKAction repeatActionForever:
+                         [SKAction sequence:@[
+                                              [SKAction performSelector:@selector(spawnEnemy)
+                                                                           onTarget:self], [SKAction waitForDuration: 2.0]]]]];
     }
     return self;
 }
@@ -101,7 +111,7 @@ static inline CGFloat ScalarShortestAngleBetween(const CGFloat a, const CGFloat 
         _dt = 0;
     }
     _lastUpdateTime = currentTime;
-    NSLog(@"%0.2f miliseconds from last update",_dt*1000);
+    //NSLog(@"%0.2f miliseconds from last update",_dt*1000);
     
     if (CGPointDistance(_zombie.position, _lastTouchLocation) <= ZOMBIE_MOVE_POINTS_PER_SEC * _dt) {
         _zombie.position = CGPointMake(_lastTouchLocation.x, _lastTouchLocation.y);
@@ -116,7 +126,7 @@ static inline CGFloat ScalarShortestAngleBetween(const CGFloat a, const CGFloat 
     
     CGPoint ammountToMove = CGPointMultiplyScalar(velocity, _dt);
     
-    NSLog(@"Amount to move %@", NSStringFromCGPoint(ammountToMove));
+    //NSLog(@"Amount to move %@", NSStringFromCGPoint(ammountToMove));
     
     sprite.position = CGPointAdd(sprite.position, ammountToMove);
 
@@ -213,6 +223,46 @@ static inline CGFloat ScalarShortestAngleBetween(const CGFloat a, const CGFloat 
     sprite.zRotation += ScalarSign(shortest) * amtToRotate;
 }
 
+-(void)spawnEnemy {
+    /*
+    SKSpriteNode *enemy = [SKSpriteNode spriteNodeWithImageNamed:@"enemy"];
+    enemy.position = CGPointMake(self.size.width + enemy.size.width/2, self.size.height);
+    
+    [self addChild:enemy];
+    
+    SKAction *actionMidMove = [SKAction moveByX:-self.size.width/2-enemy.size.width/2
+                                              y:-self.size.height + enemy.size.height/2 duration:1.0];
+    
+    SKAction *actionMove = [SKAction moveByX:-self.size.width/2-enemy.size.width/2
+                                           y:self.size.height/2+enemy.size.height/2 duration:1.0];
+    
+    SKAction *wait = [SKAction waitForDuration:1.0];
+    SKAction *logMessage = [SKAction runBlock:^{
+        NSLog(@"Reached bottom!");
+    }];
+    
+    SKAction *reverseMid = [actionMidMove reversedAction];
+    
+    SKAction *reverseMove = [actionMove reversedAction];
+    
+    SKAction *sequence =[SKAction sequence:@[actionMidMove, logMessage, wait, actionMove,
+                                             reverseMove, logMessage, wait, reverseMid]];
+    
+    SKAction *repeat = [SKAction repeatActionForever:sequence];
+    [enemy runAction:repeat];
+    */
+    
+    SKSpriteNode *enemy = [SKSpriteNode spriteNodeWithImageNamed:@"enemy"];
+    enemy.position = CGPointMake( self.size.width + enemy.size.width/2,
+    ScalarRandomRange(enemy.size.height/2, self.size.height - enemy.size.height/2));
+    
+    [self addChild:enemy];
+    
+    SKAction *actionMove = [SKAction moveToX:-enemy.size.width/2 duration:2.0];
+    SKAction *actionRemove = [SKAction removeFromParent];
+    
+    [enemy runAction: [SKAction sequence:@[actionMove, actionRemove]]];
+}
 
 
 @end
