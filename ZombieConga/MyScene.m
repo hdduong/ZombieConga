@@ -78,6 +78,8 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
     NSTimeInterval _lastUpdateTime;
     NSTimeInterval _dt;
     
+    SKAction *_zombieAnaimation;
+    
 }
 
 -(id)initWithSize:(CGSize)size {
@@ -99,6 +101,22 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
                          [SKAction sequence:@[
                                               [SKAction performSelector:@selector(spawnEnemy)
                                                                            onTarget:self], [SKAction waitForDuration: 2.0]]]]];
+        
+        NSMutableArray *textures = [NSMutableArray arrayWithCapacity:10];
+        
+        for (int i =1;i < 4;i ++) {
+            NSString *textureName = [NSString stringWithFormat:@"zombie%d",i];
+            SKTexture *texture = [SKTexture textureWithImageNamed:textureName];
+            [textures addObject:texture];
+        }
+        
+        _zombieAnaimation = [SKAction animateWithTextures:textures timePerFrame:0.1];
+        
+        //[_zombie runAction:[SKAction repeatActionForever:_zombieAnaimation]];
+        
+        
+        [self runAction:[SKAction repeatActionForever: [SKAction sequence:@[ [SKAction performSelector:@selector(spawnCat) onTarget:self],
+        [SKAction waitForDuration:1.0]]]]];
     }
     return self;
 }
@@ -116,6 +134,8 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
     if (CGPointDistance(_zombie.position, _lastTouchLocation) <= ZOMBIE_MOVE_POINTS_PER_SEC * _dt) {
         _zombie.position = CGPointMake(_lastTouchLocation.x, _lastTouchLocation.y);
         _velocity = CGPointZero;
+        
+        [self stopZombieAnimation];
     }
     [self moveSprite:_zombie velocity:_velocity];
     [self rotateSprite:_zombie toFace:_velocity rotateRadiansPerSec:ZOMBIE_ROTATE_RADIANS_PER_SEC ];
@@ -141,7 +161,8 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
     
 
     _velocity = CGPointMultiplyScalar(direction, ZOMBIE_MOVE_POINTS_PER_SEC);
-    
+    [self startZombieAnimation];
+
     
 }
 
@@ -264,5 +285,56 @@ static inline CGFloat ScalarRandomRange(CGFloat min,
     [enemy runAction: [SKAction sequence:@[actionMove, actionRemove]]];
 }
 
+- (void)startZombieAnimation {
+    if (![_zombie actionForKey:@"animation"]) {
+        [_zombie runAction: [SKAction repeatActionForever:_zombieAnaimation] withKey:@"animation"];
+    }
+}
 
+- (void)stopZombieAnimation {
+    [_zombie removeActionForKey:@"animation"];
+}
+
+
+- (void)spawnCat {
+    // 1
+    SKSpriteNode *cat =
+    [SKSpriteNode spriteNodeWithImageNamed:@"cat"];
+    cat.position = CGPointMake( ScalarRandomRange(0, self.size.width), ScalarRandomRange(0, self.size.height));
+    
+    cat.xScale = 0;
+    cat.yScale = 0;
+    
+    [self addChild:cat];
+    
+    
+    /*
+    SKAction *appear = [SKAction scaleTo:1.0 duration:0.5];
+    SKAction *wait = [SKAction waitForDuration:3.0];
+    SKAction *disappear = [SKAction scaleTo:0.0 duration:0.5];
+    SKAction *removeFromParent = [SKAction removeFromParent];
+    [cat runAction: [SKAction sequence:@[appear, wait, disappear, removeFromParent]]];
+     */
+    
+    cat.zRotation = -M_PI / 16;
+    SKAction *appear = [SKAction scaleTo:1.0 duration:0.5];
+    SKAction *leftWiggle = [SKAction rotateByAngle:M_PI / 8
+                                          duration:0.5];
+    SKAction *rightWiggle = [leftWiggle reversedAction];
+    SKAction *fullWiggle =[SKAction sequence:@[leftWiggle, rightWiggle]];
+    
+    //SKAction *wiggleWait = [SKAction repeatAction:fullWiggle count:10];
+    
+    SKAction *scaleUp = [SKAction scaleBy:1.2 duration:0.25];
+    SKAction *scaleDown = [scaleUp reversedAction];
+    SKAction *fullScale = [SKAction sequence: @[scaleUp, scaleDown, scaleUp, scaleDown]];
+    SKAction *group = [SKAction group:@[fullScale, fullWiggle]];
+    SKAction *groupWait = [SKAction repeatAction:group count:1000];
+    
+    SKAction *disappear = [SKAction scaleTo:0.0 duration:0.5];
+    SKAction *removeFromParent = [SKAction removeFromParent];
+    [cat runAction: [SKAction sequence: @[appear,groupWait , disappear, removeFromParent]]];
+}
+
+    
 @end
